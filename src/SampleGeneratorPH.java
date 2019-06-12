@@ -9,8 +9,10 @@ public class SampleGeneratorPH implements SampleGenerator{
     int n;
     double p, p_x;
     double lambda_x1, lambda_x2, lambda_y;
+    RealMatrix tau, T;
 
-    ExponentialDistribution expDist_lambda_y, expDist_lambda_x1, expDist_lambda_x2;
+//    ExponentialDistribution expDist_lambda_y, expDist_lambda_x1, expDist_lambda_x2;
+    ExponentialDistribution expDist;
     Random rand;
 
     public SampleGeneratorPH(RealMatrix tau, RealMatrix T) {
@@ -24,12 +26,24 @@ public class SampleGeneratorPH implements SampleGenerator{
         lambda_x1 = -(T.getEntry(n-2, n-2));
         p_x = T.getEntry(n-2, n-1) / lambda_x1;
 
-        expDist_lambda_y = new ExponentialDistribution(this.lambda_y);
+
         expDist_lambda_x1 = new ExponentialDistribution(this.lambda_x1);
         expDist_lambda_x2 = new ExponentialDistribution(this.lambda_x2);
 
+        this.tau = tau;
+        this.T = T;
+        expDist = new ExponentialDistribution(1);
+
         rand = new Random();
 
+        for (int i = 0; i < T.getRowDimension(); i++) {
+            double sum = 0;
+            for (int j = 0; j < T.getColumnDimension(); j++) {
+                sum += T.getEntry(i, j);
+            }
+            lambda_table[i] = -T.getEntry(i, i);
+            T.setEntry(i, i, -sum);
+        }
     }
 
     @Override
@@ -44,34 +58,62 @@ public class SampleGeneratorPH implements SampleGenerator{
                 '}';
     }
 
-    public double generateSingleSample() {
-
+    public Long generateSingleSample() {
+        RealMatrix tau;
         double var = 0;
-
+        long state;
         double r_p = rand.nextDouble();
+        for (state = 0; state < tau.getColumnDimension(); state++) {
+            double p = tau.getEntry(0, state);
+            if (r_p < p) {
+                break;
+            }
+            r_p -= p;
+        }
 
+
+        while (state < tau.getColumnDimension()) {
+            double lambda = lambda_table[state];
+            var += expDist.sample() / lambda;
+            double r = rand.nextDouble() * lambda;
+            long next_state;
+            for (next_state = 0; next_state < T.getColumnDimension(); next_state++) {
+                double p = T.getEntry(state, next_state);
+                if (r < p) {
+                    break;
+                }
+                r -= p;
+            }
+            if (state == next_state) {
+                state = tau.getColumnDimension();
+            } else {
+                state = next_state;
+            }
+        }
+/*
         if(r_p < this.p)
         {
             for(int i=0; i<(n-2); i++)
             {
-                var += expDist_lambda_y.sample();
+                var += (long)(expDist_lambda_y.sample() * Math.pow(10, 9));
             }
 
-            var += expDist_lambda_x1.sample();
+            var += (long) (expDist_lambda_x1.sample() * Math.pow(10, 9));
 
             double r_p_x = rand.nextDouble();
             if(r_p_x < this.p_x)
             {
-                var += expDist_lambda_x2.sample();
+                var += (long) (expDist_lambda_x2.sample() * Math.pow(10, 9));
             }
         }
-        return var;
+        */
+        return (long)(var * 1000000000); // scale from sec to ns
 
     }
 
     @Override
-    public ArrayList<Double> generateSample(int N) {
-        ArrayList<Double> alist = new ArrayList<Double>();
+    public ArrayList<Long> generateSample(int N) {
+        ArrayList<Long> alist = new ArrayList<Long>();
         for(int i=0; i<N; i++)
         {
             alist.add(generateSingleSample());

@@ -4,7 +4,7 @@ public class WebSampleGenerator implements SampleGenerator{
 
 
     @Override
-    public ArrayList<Double> generateSample(int N) {
+    public ArrayList<Long> generateSample(int N) {
         return null;
     }
 }

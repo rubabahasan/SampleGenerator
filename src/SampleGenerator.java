@@ -1,5 +1,5 @@
 import java.util.ArrayList;
 
 public interface SampleGenerator {
-    public ArrayList<Double> generateSample(int N);
+    public ArrayList<Long> generateSample(int N);
 }
